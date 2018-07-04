@@ -12,7 +12,6 @@ The player includes the following feature set:
 
 Note: An [Android version](https://github.com/hola/spark_android_sdk) is also available.
 
-TODO alexeym: (?) setup travis tests when released
 [![CI Status](http://img.shields.io/travis/spark/SparkPlayer.svg?style=flat)](https://travis-ci.org/spark/SparkPlayer)
 [![Version](https://img.shields.io/cocoapods/v/SparkPlayer.svg?style=flat)](http://cocoapods.org/pods/SparkPlayer)
 [![License](https://img.shields.io/cocoapods/l/SparkPlayer.svg?style=flat)](http://cocoapods.org/pods/SparkPlayer)
