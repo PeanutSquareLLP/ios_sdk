@@ -100,11 +100,14 @@ class StartViewController: UIViewController, UITableViewDelegate, UITableViewDat
     }
         
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell:UITableViewCell! = self.customerHistoryTable.dequeueReusableCell(withIdentifier: "cell") as UITableViewCell!
-        cell.textLabel?.text = self.customerHistory[indexPath.row]
-        cell.textLabel?.textColor = UIColor.gray
-        cell.selectionStyle = .none
-        return cell
+        if let cell = self.customerHistoryTable.dequeueReusableCell(withIdentifier: "cell") {
+            cell.textLabel?.text = self.customerHistory[indexPath.row]
+            cell.textLabel?.textColor = UIColor.gray
+            cell.selectionStyle = .none
+            return cell
+        }
+        // should not happends
+        return UITableViewCell(style: .default, reuseIdentifier: nil)
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {

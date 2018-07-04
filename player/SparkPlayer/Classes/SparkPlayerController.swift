@@ -203,6 +203,14 @@ class SparkPlayerController: UIViewController {
     func onSeekStart() {
         seeking = true
         activateView(withSlider: .Highlighted)
+
+        let time = CMTimeMakeWithSeconds(Float64(sparkView.positionSlider.value), Int32(NSEC_PER_SEC))
+        delegate.seekStart(time);
+    }
+
+    func onSeekMove() {
+        let time = CMTimeMakeWithSeconds(Float64(sparkView.positionSlider.value), Int32(NSEC_PER_SEC))
+        delegate.seekMove(time);
     }
 
     func onSeekEnd() {
@@ -311,7 +319,7 @@ extension SparkPlayerController {
     }
 
     @IBAction func onSliderDrag(sender: UISlider!) {
-        sparkView.updateThumbnail()
+        onSeekMove();
     }
 
     @IBAction func onSliderUp(sender: UISlider!) {

@@ -15,7 +15,7 @@ class SparkThumbnailView: UIView {
     @IBOutlet var left: NSLayoutConstraint!
 
     func setImage(_ image: UIImage) {
-        let (w, h) = (image.size.width, image.size.height)
+        /*let (w, h) = (image.size.width, image.size.height)
         let aspectRation = w / h
 
         if (aspectRation < 0) {
@@ -24,7 +24,7 @@ class SparkThumbnailView: UIView {
         } else {
             height.constant = image.size.height
             width.constant = image.size.height * aspectRation
-        }
+        }*/
 
         imageView.image = image
     }
@@ -32,5 +32,10 @@ class SparkThumbnailView: UIView {
     func setPosition(_ position: CGFloat) {
         let left = position.isFinite ? position : 0
         self.left.constant = left - frame.width / 2
+    }
+
+    func setSize(_ width: Int, _ height: Int) {
+        self.width.constant = CGFloat(width)
+        self.height.constant = CGFloat(height)
     }
 }

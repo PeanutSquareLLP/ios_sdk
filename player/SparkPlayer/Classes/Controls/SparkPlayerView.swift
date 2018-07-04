@@ -131,11 +131,7 @@ class SparkPlayerView: UIView {
 }
 
 // Handle Spark features
-extension SparkPlayerView: SparkThumbnailsDelegate {
-    func get_thumbnail_container() -> UIView! {
-        return thumbnailView
-    }
-
+extension SparkPlayerView {
     func updateThumbnail(withImage image: UIImage? = nil) {
         guard !thumbnailView.isHidden else {
             return

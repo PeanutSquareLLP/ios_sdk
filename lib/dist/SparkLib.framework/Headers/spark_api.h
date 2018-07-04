@@ -35,6 +35,8 @@ typedef NS_ENUM(int, SparkLogLevel) {
 @property(weak, readonly) SparkLoader* _Nullable loader;
 -(void)on_play;
 -(void)on_pause;
+-(void)on_ad_suspend;
+-(void)on_ad_restore;
 -(void)on_ended;
 -(void)on_timeupdate:(NSNumber* _Nonnull)pos;
 -(void)on_seeking;
@@ -138,11 +140,13 @@ __IOS_AVAILABLE(10.0) __TVOS_PROHIBITED __WATCHOS_PROHIBITED
 
 // Register an AVPlayerItem to work with SparkAPI
 //     @param forItem - AVPlayerItem to register
-- (id<SparkLibJSDelegate> _Nonnull)addPlayerProxy:(AVPlayerItem* _Nonnull)forItem;
+- (id<SparkLibJSDelegate> _Nonnull)addPlayerProxy:(AVPlayerItem *_Nonnull)forItem;
+- (id<SparkLibJSDelegate> _Nonnull)addPlayerProxy:(AVPlayerItem *_Nonnull)forItem
+    andPlayer:(id<SparkLibPlayerDelegate> _Nonnull)player;
 
 // Unregister the AVPlayerItem from SparkAPI
 //     @param forItem - AVPlayerItem to unregister
-- (void)removePlayerProxy:(AVPlayerItem* _Nonnull)forItem;
+- (void)removePlayerProxy:(AVPlayerItem *_Nonnull)forItem;
 
 // Finalize spark and release resources.
 + (void)finalize;
