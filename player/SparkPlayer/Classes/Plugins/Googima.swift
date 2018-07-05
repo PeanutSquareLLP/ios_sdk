@@ -1,9 +1,10 @@
 import GoogleInteractiveMediaAds
 
-public class GoogimaPlugin: NSObject, PluginInterface, IMAAdsLoaderDelegate, IMAAdsManagerDelegate {
+class GoogimaPlugin: NSObject, PluginInterface, IMAAdsLoaderDelegate, IMAAdsManagerDelegate {
     static var name: String! { return "googima" }
     static private var observerContext = 0
     private var _config: Dictionary<String, Any>!
+    private var _player: SparkPlayerDelegate!
     private var _viewController: UIViewController!
     private var _contentPlayer: AVPlayer?
     private var _contentItem: AVPlayerItem?
@@ -11,10 +12,12 @@ public class GoogimaPlugin: NSObject, PluginInterface, IMAAdsLoaderDelegate, IMA
     private var _adsLoader: IMAAdsLoader!
     private var _adsManager: IMAAdsManager!
     private var _pendingAdRequest = false
+    private var _adInProgress = false
     
-    required public init(config: Dictionary<String, Any>!) {
+    required init(config: Dictionary<String, Any>!, player: SparkPlayerDelegate) {
         super.init()
         _config = config
+        _player = player
         _adsLoader = IMAAdsLoader(settings: nil)
         _adsLoader.delegate = self
     }
@@ -26,7 +29,6 @@ public class GoogimaPlugin: NSObject, PluginInterface, IMAAdsLoaderDelegate, IMA
     
     func onPlayerItemChange(player: AVPlayer?, item: AVPlayerItem?) {
         if (player != _contentPlayer) {
-            _videoDetach()
             _playerDetach()
             _contentPlayer = player
             _contentItem = nil
@@ -36,15 +38,21 @@ public class GoogimaPlugin: NSObject, PluginInterface, IMAAdsLoaderDelegate, IMA
             return
         }
         if (item != _contentItem) {
-            _videoDetach();
             _contentItem = item
-            _videoAttach()
         }
-        if (_contentItem==nil) {
+        if (_contentItem == nil) {
             return
         }
         _pendingAdRequest = true
         _requestAds()
+    }
+    
+    func onVideoEnded() -> Void {
+        _adsLoader.contentComplete()
+    }
+    
+    func isAdPlaying() -> Bool {
+        return _adInProgress
     }
     
     private func _playerAttach() {
@@ -64,25 +72,6 @@ public class GoogimaPlugin: NSObject, PluginInterface, IMAAdsLoaderDelegate, IMA
         _contentPlayer?.removeObserver(self, forKeyPath: "rate",
             context: &GoogimaPlugin.observerContext)
         _contentPlayhead = nil
-    }
-    
-    private func _videoAttach(){
-        if (_contentItem==nil) {
-            return
-        }
-        NotificationCenter.default.addObserver(self,
-            selector: #selector(GoogimaPlugin.contentDidFinishPlaying(_:)),
-            name: NSNotification.Name.AVPlayerItemDidPlayToEndTime,
-            object: _contentItem)
-    }
-    
-    private func _videoDetach(){
-        if (_contentItem==nil) {
-            return
-        }
-        NotificationCenter.default.removeObserver(self,
-            name: NSNotification.Name.AVPlayerItemDidPlayToEndTime,
-            object: _contentItem)
     }
     
     public override func observeValue(forKeyPath keyPath: String?,
@@ -123,13 +112,6 @@ public class GoogimaPlugin: NSObject, PluginInterface, IMAAdsLoaderDelegate, IMA
             userContext: nil)
         _adsLoader.requestAds(with: request)
     }
-
-    @objc func contentDidFinishPlaying(_ notification: Notification) {
-        // Make sure not to call contentComplete as a result of an ad end.
-        if (notification.object as! AVPlayerItem) == _contentItem {
-            _adsLoader.contentComplete()
-        }
-    }
     
     // MARK: - IMAAdsLoaderDelegate
     
@@ -152,8 +134,28 @@ public class GoogimaPlugin: NSObject, PluginInterface, IMAAdsLoaderDelegate, IMA
     // MARK: - IMAAdsManagerDelegate
     
     public func adsManager(_ adsManager: IMAAdsManager!, didReceive event: IMAAdEvent!) {
-        if event.type == IMAAdEventType.LOADED {
+        print("[googima] ads manager event: \(event.typeString!)")
+        switch (event.type) {
+        case IMAAdEventType.LOADED:
             _adsManager.start()
+            break
+        case IMAAdEventType.STARTED:
+            if (!_adInProgress)
+            {
+                _adInProgress = true
+                _player.onAdStarted()
+            }
+            break
+        case IMAAdEventType.SKIPPED: fallthrough
+        case IMAAdEventType.COMPLETE:
+            if (_adInProgress)
+            {
+                _adInProgress = false
+                _player.onAdCompleted()
+            }
+            break
+        default:
+            break
         }
     }
     

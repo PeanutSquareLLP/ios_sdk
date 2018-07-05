@@ -8,31 +8,6 @@
 import AVKit
 import SparkLib
 
-protocol SparkPlayerDelegate {
-    // controls handlers
-    func onPlayClick()
-    func onFullscreenClick()
-
-    // Internal interface for AVPlayer data
-    func isLive() -> Bool
-    func currentTime() -> CMTime
-    func seekTo(_ value: CMTime)
-    func canPlayFastForward() -> Bool
-    func canPlaySlowForward() -> Bool
-    func getRate() -> Float
-    func setRate(_ rate: Float)
-    func duration() -> CMTime
-    func loadedTimeRanges() -> [CMTimeRange]
-    func isPaused() -> Bool
-    func isEnded() -> Bool
-    func isSeeking() -> Bool
-    func getBitrate() -> Double
-    func getURL() -> String?
-    func getCurrentURL() -> String?
-    func getQualityList() -> [HolaHLSLevelInfo]
-    func setQuality(withURL url: String?) throws
-}
-
 public class SparkPlayer: UIViewController {
     private static var observerContext = 0
 
@@ -50,12 +25,12 @@ public class SparkPlayer: UIViewController {
 
     // player handling
     private var config: Dictionary<String, Any>!
-    private var plugins = [PluginInterface]()
     private var playerLayer: AVPlayerLayer!
     private var timeObserverToken: Any?
-    private var paused = true
-    private var _rate: Float = 1
-    private var seeking = false
+    internal var plugins: Dictionary<String, PluginInterface>!
+    internal var paused = true
+    internal var _rate: Float = 1
+    internal var seeking = false
     private weak var currentItem: AVPlayerItem? {
         willSet {
             unbindCurrentItem()
@@ -66,15 +41,18 @@ public class SparkPlayer: UIViewController {
     }
 
     // views handling
-    private var inlineController: SparkPlayerInlineController!
-    private var fullscreenController: SparkPlayerFullscreenController!
-    private var fullscreen = false
-    private var inlineFrame: CGRect?
+    internal var inlineController: SparkPlayerInlineController!
+    internal var fullscreenController: SparkPlayerFullscreenController!
+    internal var fullscreen = false
+    internal var inlineFrame: CGRect?
 
     // Spark handling
     var sparkAPI: SparkAPI? {
         return SparkAPI.getAPI(nil)
     }
+
+    // Thumbnails
+    var thumbnailsHandler: SparkThumbnailsHandlerDelegate? = nil
 
     var sparkProxy: SparkLibJSDelegate?
 
@@ -132,8 +110,10 @@ public class SparkPlayer: UIViewController {
     public init(withConfig config: Dictionary<String, Any>?) {
         super.init(nibName: nil, bundle: nil)
         self.config = config ?? Dictionary<String, Any>()
+        self.plugins = Dictionary<String, PluginInterface>()
         if let cfg = self.config[GoogimaPlugin.name] as? Dictionary<String, Any> {
-            self.plugins.append(GoogimaPlugin(config: cfg))
+            self.plugins[GoogimaPlugin.name] =
+	        GoogimaPlugin(config: cfg, player: self)
         }
     }
     
@@ -182,7 +162,7 @@ public class SparkPlayer: UIViewController {
             layer.player = self.player
         }
 
-        guard let player = self.player else {
+        guard self.player != nil else {
             return
         }
 
@@ -222,9 +202,6 @@ public class SparkPlayer: UIViewController {
         timeObserverToken = player.addPeriodicTimeObserver(forInterval: CMTimeMakeWithSeconds(1, 1), queue: DispatchQueue.main) { (time) -> Void in
             self.activeController.timeupdate()
             self.sparkProxy?.on_timeupdate(NSNumber(value: time.seconds))
-            if (self.isEnded()) {
-                self.sparkProxy?.on_ended()
-            }
         }
 
         if let item = player.currentItem {
@@ -314,10 +291,16 @@ public class SparkPlayer: UIViewController {
         }
 
         // XXX alexeym: disabled, work in progress
-        if (false) {
-        sparkProxy = sparkAPI?.addPlayerProxy(item)
-        }
-        item.addObserver(self, forKeyPath: "status", options: NSKeyValueObservingOptions.new, context: &SparkPlayer.observerContext)
+        //if (false) {
+        sparkProxy = sparkAPI?.addPlayerProxy(item, andPlayer: self)
+        //}
+        item.addObserver(self, forKeyPath: "status",
+            options: NSKeyValueObservingOptions.new,
+            context: &SparkPlayer.observerContext)
+        NotificationCenter.default.addObserver(self,
+            selector: #selector(SparkPlayer.contentDidFinishPlaying(_:)),
+            name: NSNotification.Name.AVPlayerItemDidPlayToEndTime,
+            object: item)
         notifyPlugins(event: "playerItemChange");
     }
 
@@ -327,15 +310,26 @@ public class SparkPlayer: UIViewController {
         }
 
         // XXX alexeym: disabled, work in progress
-        if (false) {
+        //if (false) {
         sparkProxy = nil
         sparkAPI?.removePlayerProxy(item)
-        }
+        //}
         item.removeObserver(self, forKeyPath: "status", context: &SparkPlayer.observerContext)
+        NotificationCenter.default.removeObserver(self,
+            name: NSNotification.Name.AVPlayerItemDidPlayToEndTime,
+            object: item)
+    }
+    
+    @objc func contentDidFinishPlaying(_ notification: Notification) {
+        if (notification.object as? AVPlayerItem) != currentItem {
+            return
+        }
+        notifyPlugins(event: "videoEnded")
+        self.sparkProxy?.on_ended()
     }
     
     func notifyPlugins(event: String!) {
-        self.plugins.forEach { (plugin) in
+        self.plugins.values.forEach { (plugin) in
             switch (event) {
             case "viewReady":
                 plugin.onViewReady(controller: self)
@@ -343,232 +337,14 @@ public class SparkPlayer: UIViewController {
             case "playerItemChange":
                 plugin.onPlayerItemChange(player: player, item: currentItem)
                 break
+            case "videoEnded":
+                plugin.onVideoEnded()
+                break
             default: break
             }
         }
     }
 
-}
-
-extension SparkPlayer: SparkPlayerDelegate {
-    func onPlayClick() {
-        guard let player = self.player else {
-            return
-        }
-
-        if (player.rate == 0) {
-            if (isEnded()) {
-                player.seek(to: kCMTimeZero)
-            }
-            player.rate = _rate
-        } else {
-            player.pause()
-        }
-    }
-
-    func onFullscreenClick() {
-        setFullscreen(!self.fullscreen)
-    }
-
-    func isLive() -> Bool {
-        return player?.currentItem?.status == .readyToPlay && player?.currentItem?.duration.isIndefinite == true
-    }
-
-    func currentTime() -> CMTime {
-        guard let player = self.player else {
-            return CMTimeMakeWithSeconds(0, 1)
-        }
-
-        return player.currentTime()
-    }
-
-    func isEnded() -> Bool {
-        guard
-            let player = self.player,
-            let item = self.player?.currentItem else
-        {
-            return false
-        }
-
-        return player.rate == 0 && item.currentTime() == item.duration
-    }
-
-    func seekTo(_ value: CMTime) {
-        seeking = true
-        sparkProxy?.on_seeking()
-        player?.seek(to: value, toleranceBefore: kCMTimeZero, toleranceAfter: kCMTimeZero)
-    }
-
-    func onSeeked() {
-        seeking = false
-        sparkProxy?.on_seeked()
-    }
-
-    func isSeeking() -> Bool {
-        return seeking
-    }
-
-    func canPlayFastForward() -> Bool {
-        return player?.currentItem?.canPlayFastForward ?? false
-    }
-
-    func canPlaySlowForward() -> Bool {
-        return player?.currentItem?.canPlaySlowForward ?? false
-    }
-
-    func getRate() -> Float {
-        return isPaused() ? _rate : (player?.rate ?? _rate)
-    }
-
-    func setRate(_ rate: Float) {
-        _rate = rate
-        if (!isPaused()) {
-            player?.rate = _rate
-        }
-    }
-
-    func duration() -> CMTime {
-        guard let item = self.player?.currentItem else {
-            return CMTimeMakeWithSeconds(0, 1)
-        }
-
-        return item.duration.isIndefinite ? CMTimeMakeWithSeconds(0, 1) : item.duration
-    }
-
-    func loadedTimeRanges() -> [CMTimeRange] {
-        guard let item = self.player?.currentItem else {
-            return []
-        }
-
-        return item.loadedTimeRanges.asTimeRanges
-    }
-
-    func isPaused() -> Bool {
-        guard let player = self.player else {
-            return true
-        }
-        
-        return player.rate == 0
-    }
-
-    func onPlay() {
-        paused = false
-        activeController.onPlayPause()
-        activeController.activateView()
-        sparkProxy?.on_play()
-    }
-
-    func onPaused() {
-        paused = true
-        activeController.onPlayPause()
-        activeController.activateView()
-        sparkProxy?.on_pause()
-    }
-
-    func getCurrentURL() -> String? {
-        guard let asset = player?.currentItem?.asset as? AVURLAsset else {
-            return nil
-        }
-
-        return asset.url.absoluteString
-    }
-
-    func getURL() -> String? {
-        guard let asset = player?.currentItem?.asset as? AVURLAsset else {
-            return nil
-        }
-
-        guard let sparkAsset = asset as? SparkPlayerHLSAsset else {
-            return asset.url.absoluteString
-        }
-
-        return sparkAsset.getOriginURL()
-    }
-
-    func getBitrate() -> Double {
-        guard
-            let logs = player?.currentItem?.accessLog(),
-            let lastEntry = logs.events.last
-        else {
-            return 0
-        }
-
-        return lastEntry.indicatedBitrate < 0 ? round(lastEntry.observedBitrate) : lastEntry.indicatedBitrate
-    }
-
-    func getQualityList() -> [HolaHLSLevelInfo] {
-        guard let asset = player?.currentItem?.asset as? SparkPlayerHLSAsset else {
-            return []
-        }
-
-        return asset.getLevels()
-    }
-
-    func setQuality(withURL url: String? = nil) throws {
-        guard let asset = player?.currentItem?.asset as? SparkPlayerHLSAsset else {
-            throw SparkPlayerAssetError.NotASparkAsset
-        }
-
-        if let newAsset = asset.getQualityAsset(forURL: url) {
-            let isPaused = self.isPaused()
-            player?.pause()
-
-            let currentTime = self.currentTime()
-
-            let newItem = AVPlayerItem(asset: newAsset)
-            player?.replaceCurrentItem(with: newItem)
-
-            self.seekTo(currentTime)
-
-            if (!isPaused) {
-                player?.rate = _rate
-            }
-        }
-    }
-}
-
-protocol SparkPlayerTransitionDelegate {
-    func didFullscreenAppear()
-    func didFullscreenDismissed()
-}
-
-extension SparkPlayer: SparkPlayerTransitionDelegate {
-    func didFullscreenAppear() {
-        fullscreenController.isFullscreen = true
-    }
-
-    func didFullscreenDismissed() {
-        onTransitionEnded()
-    }
-}
-
-extension SparkPlayer: UIViewControllerTransitioningDelegate {
-    public func animationController(forPresented presented: UIViewController, presenting: UIViewController, source: UIViewController) -> UIViewControllerAnimatedTransitioning? {
-
-        let origin = inlineController.view.convert(inlineController.view.frame.origin, to: inlineController.view.window!.screen.fixedCoordinateSpace)
-        inlineFrame = CGRect(origin: origin, size: inlineController.view.frame.size)
-        return FullscreenRotationAnimator(originFrame: inlineFrame!, delegate: self)
-    }
-
-    public func animationController(forDismissed dismissed: UIViewController) -> UIViewControllerAnimatedTransitioning? {
-
-        let originFrame: CGRect
-        if let inlineFrame = self.inlineFrame {
-            originFrame = inlineFrame
-        } else {
-            originFrame = CGRect(origin: CGPoint.zero, size: inlineController.view.frame.size)
-        }
-
-        return FullscreenRotationDismissAnimator(originFrame: originFrame, delegate: self)
-    }
-
-    
-}
-
-extension SparkPlayer: SparkLibPlayerDelegate {
-    /*public func get_thumbnails_delegate() -> SparkThumbnailsDelegate {
-
-    }*/
 }
 
 // public API
