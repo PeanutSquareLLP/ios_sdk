@@ -223,7 +223,6 @@
 				2D5E21462029DE0B00B0A2C1 /* Sources */,
 				2D5E21472029DE0B00B0A2C1 /* Frameworks */,
 				2D5E21482029DE0B00B0A2C1 /* Resources */,
-				68CBBBA40049DF234890909A /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -242,7 +241,6 @@
 				2DC444CB20245CBC0010A70A /* Sources */,
 				2DC444CC20245CBC0010A70A /* Frameworks */,
 				2DC444CD20245CBC0010A70A /* Resources */,
-				3A99734C8E81AEFB5395FB3C /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -263,7 +261,6 @@
 				EADF80A32019D96D007EF10B /* Resources */,
 				2DC444E220245CBC0010A70A /* Embed App Extensions */,
 				6583C75B5687750686F88F63 /* [CP] Embed Pods Frameworks */,
-				5B5DC007E9BFED29516E1218 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -358,36 +355,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		3A99734C8E81AEFB5395FB3C /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[CP] Copy Pods Resources";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-preview-notification-content/Pods-preview-notification-content-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		5B5DC007E9BFED29516E1218 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[CP] Copy Pods Resources";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-spark-demo/Pods-spark-demo-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 		6583C75B5687750686F88F63 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -395,7 +362,7 @@
 			);
 			inputPaths = (
 				"${SRCROOT}/Pods/Target Support Files/Pods-spark-demo/Pods-spark-demo-frameworks.sh",
-				"${PODS_ROOT}/GoogleAds-IMA-iOS-SDK/GoogleInteractiveMediaAds/GoogleInteractiveMediaAds.framework",
+				"${PODS_ROOT}/GoogleAds-IMA-iOS-SDK/GoogleInteractiveMediaAds.framework",
 				"${PODS_ROOT}/../../../lib/dist/SparkLib.framework",
 				"${BUILT_PRODUCTS_DIR}/SparkPlayer/SparkPlayer.framework",
 			);
@@ -408,21 +375,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-spark-demo/Pods-spark-demo-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		68CBBBA40049DF234890909A /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[CP] Copy Pods Resources";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Pods/Target Support Files/Pods-preview-notification-service/Pods-preview-notification-service-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		8339CDCB4778890C79E86180 /* [CP] Check Pods Manifest.lock */ = {

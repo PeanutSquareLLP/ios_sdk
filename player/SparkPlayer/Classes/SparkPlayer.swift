@@ -27,6 +27,7 @@ public class SparkPlayer: UIViewController {
     private var config: Dictionary<String, Any>!
     private var playerLayer: AVPlayerLayer!
     private var timeObserverToken: Any?
+    private var ready = false
     internal var plugins: Dictionary<String, PluginInterface>!
     internal var paused = true
     internal var _rate: Float = 1
@@ -73,7 +74,8 @@ public class SparkPlayer: UIViewController {
 
     public var allowAutoFullscreen = true
     public var limitControlsWidth = false
-
+    public var delegate: SparkPlayerDelegate?
+    
     func getAPI(forCustomer id: String? = nil) {
 
     }
@@ -102,7 +104,15 @@ public class SparkPlayer: UIViewController {
         view.addSubview(inlineController.view)
 
         NotificationCenter.default.addObserver(self, selector: #selector(SparkPlayer.rotated), name: NSNotification.Name.UIDeviceOrientationDidChange, object: nil)
-        notifyPlugins(event: "viewReady")
+        notifyPlugins(event: "viewChange")
+    }
+    
+    public override func viewDidAppear(_ animated: Bool) {
+        if (!ready)
+        {
+            ready = true
+            self.delegate?.onReady?(self)
+        }
     }
 
     convenience public init() { self.init(withConfig: nil) }
@@ -110,6 +120,9 @@ public class SparkPlayer: UIViewController {
     public init(withConfig config: Dictionary<String, Any>?) {
         super.init(nibName: nil, bundle: nil)
         self.config = config ?? Dictionary<String, Any>()
+        if let allowAutoFullscreen = self.config["allowAutoFullscreen"] as? Bool {
+            self.allowAutoFullscreen = allowAutoFullscreen
+        }
         self.plugins = Dictionary<String, PluginInterface>()
         if let cfg = self.config[GoogimaPlugin.name] as? Dictionary<String, Any> {
             self.plugins[GoogimaPlugin.name] =
@@ -151,9 +164,9 @@ public class SparkPlayer: UIViewController {
         }
 
         if (UIDevice.current.orientation.isLandscape) {
-            setFullscreen(true)
+            setFullscreen(true, source: "orientationchange")
         } else {
-            setFullscreen(false)
+            setFullscreen(false, source: "orientationchange")
         }
     }
 
@@ -169,7 +182,7 @@ public class SparkPlayer: UIViewController {
         bindPlayerEvents()
     }
 
-    func setFullscreen(_ fullscreen: Bool) {
+    func setFullscreen(_ fullscreen: Bool, source: String) {
         if (self.fullscreen == fullscreen) {
             return
         }
@@ -187,6 +200,9 @@ public class SparkPlayer: UIViewController {
         }
 
         self.fullscreen = fullscreen
+        notifyPlugins(event: "viewChange")
+	self.delegate?.onFullscreenChange?(self, state: self.fullscreen,
+            source: source)
     }
 
     func onTransitionEnded() {
@@ -331,8 +347,8 @@ public class SparkPlayer: UIViewController {
     func notifyPlugins(event: String!) {
         self.plugins.values.forEach { (plugin) in
             switch (event) {
-            case "viewReady":
-                plugin.onViewReady(controller: self)
+            case "viewChange":
+                plugin.onViewChange(view: activeController.view)
                 break
             case "playerItemChange":
                 plugin.onPlayerItemChange(player: player, item: currentItem)
@@ -351,5 +367,26 @@ public class SparkPlayer: UIViewController {
 public extension SparkPlayer {
     func isFullscreen() -> Bool {
         return self.fullscreen
+    }
+    func isLive() -> Bool {
+        return self.isLiveStream()
+    }
+    func isPlaying() -> Bool {
+        return !self.isPaused()
+    }
+    func isAdActive() -> Bool {
+        return self.isAdPlaying()
+    }
+    func getCurrentTime() -> CMTime {
+        return self.currentTime()
+    }
+    func getCurrentSrc() -> String? {
+        return self.getCurrentURL()
+    }
+    func getDuration() -> CMTime {
+        return self.duration()
+    }
+    func setFullscreen(_ fullscreen: Bool) {
+        setFullscreen(fullscreen, source: "api")
     }
 }

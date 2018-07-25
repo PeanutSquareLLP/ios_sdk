@@ -51,9 +51,9 @@ class SelectableMenuItem: MenuItem {
 
 class QualityMenuItem: SelectableMenuItem {
     var levelInfo: HolaHLSLevelInfo
-    var delegate: SparkPlayerDelegate
+    var delegate: SparkPlayerInternalDelegate
 
-    init(_ menu: SparkPlayerMenuViewController, delegate: SparkPlayerDelegate, levelInfo: HolaHLSLevelInfo) {
+    init(_ menu: SparkPlayerMenuViewController, delegate: SparkPlayerInternalDelegate, levelInfo: HolaHLSLevelInfo) {
         self.delegate = delegate
         self.levelInfo = levelInfo
 
@@ -97,10 +97,10 @@ class QualityMenuItem: SelectableMenuItem {
 }
 
 class RateMenuItem: SelectableMenuItem {
-    var delegate: SparkPlayerDelegate
+    var delegate: SparkPlayerInternalDelegate
     var rate: Float
 
-    init(_ menu: SparkPlayerMenuViewController, delegate: SparkPlayerDelegate, rate: Float, text: String? = nil) {
+    init(_ menu: SparkPlayerMenuViewController, delegate: SparkPlayerInternalDelegate, rate: Float, text: String? = nil) {
         self.delegate = delegate
         self.rate = rate
 

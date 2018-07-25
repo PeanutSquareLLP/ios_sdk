@@ -4,17 +4,20 @@ class GoogimaPlugin: NSObject, PluginInterface, IMAAdsLoaderDelegate, IMAAdsMana
     static var name: String! { return "googima" }
     static private var observerContext = 0
     private var _config: Dictionary<String, Any>!
-    private var _player: SparkPlayerDelegate!
-    private var _viewController: UIViewController!
+    private var _player: SparkPlayerInternalDelegate!
+    private var _view: UIView!
     private var _contentPlayer: AVPlayer?
     private var _contentItem: AVPlayerItem?
     private var _contentPlayhead: IMAAVPlayerContentPlayhead?
+    private var _adsDisplayContainer: IMAAdDisplayContainer?
     private var _adsLoader: IMAAdsLoader!
     private var _adsManager: IMAAdsManager!
     private var _pendingAdRequest = false
     private var _adInProgress = false
     
-    required init(config: Dictionary<String, Any>!, player: SparkPlayerDelegate) {
+    required init(config: Dictionary<String, Any>!,
+        player: SparkPlayerInternalDelegate)
+    {
         super.init()
         _config = config
         _player = player
@@ -22,9 +25,10 @@ class GoogimaPlugin: NSObject, PluginInterface, IMAAdsLoaderDelegate, IMAAdsMana
         _adsLoader.delegate = self
     }
     
-    func onViewReady(controller: UIViewController!) {
-        self._viewController = controller
-        _requestAds()
+    func onViewChange(view: UIView!) {
+        self._view = view
+        _adsDisplayContainer?.setValue(view, forKey: "adContainer") ??
+	    _requestAds()
     }
     
     func onPlayerItemChange(player: AVPlayer?, item: AVPlayerItem?) {
@@ -96,18 +100,19 @@ class GoogimaPlugin: NSObject, PluginInterface, IMAAdsLoaderDelegate, IMAAdsMana
     
     private func _requestAds() {
         let rate = _contentPlayer?.rate ?? 0
-        if (_viewController==nil || !_pendingAdRequest || rate<=0) {
+        if (_view==nil || !_pendingAdRequest || rate<=0) {
             return
         }
         _pendingAdRequest = false
         // Create ad display container for ad rendering.
-        let adDisplayContainer = IMAAdDisplayContainer(
-            adContainer: _viewController.view,
+        _adsDisplayContainer = IMAAdDisplayContainer(
+            adContainer: _view,
             companionSlots: nil)
-        // Create an ad request with our ad tag, display container, and optional user context.
+        // Create an ad request with our ad tag, display container,
+        // and optional user context.
         let request = IMAAdsRequest(
             adTagUrl: _config["adTagUrl"] as? String,
-            adDisplayContainer: adDisplayContainer,
+            adDisplayContainer: _adsDisplayContainer,
             contentPlayhead: _contentPlayhead,
             userContext: nil)
         _adsLoader.requestAds(with: request)
@@ -116,14 +121,11 @@ class GoogimaPlugin: NSObject, PluginInterface, IMAAdsLoaderDelegate, IMAAdsMana
     // MARK: - IMAAdsLoaderDelegate
     
     public func adsLoader(_ loader: IMAAdsLoader!, adsLoadedWith adsLoadedData: IMAAdsLoadedData!) {
-        // Grab the instance of the IMAAdsManager and set ourselves as the delegate.
+        // Grab the instance of the IMAAdsManager and set the delegate.
         _adsManager = adsLoadedData.adsManager
         _adsManager.delegate = self
-        // Create ads rendering settings and tell the SDK to use the in-app browser.
-        let adsRenderingSettings = IMAAdsRenderingSettings()
-        adsRenderingSettings.webOpenerPresentingController = _viewController
         // Initialize the ads manager.
-        _adsManager.initialize(with: adsRenderingSettings)
+        _adsManager.initialize(with: IMAAdsRenderingSettings())
     }
     
     public func adsLoader(_ loader: IMAAdsLoader!, failedWith adErrorData: IMAAdLoadingErrorData!) {
@@ -154,6 +156,13 @@ class GoogimaPlugin: NSObject, PluginInterface, IMAAdsLoaderDelegate, IMAAdsMana
                 _player.onAdCompleted()
             }
             break
+        case IMAAdEventType.TAPPED:
+            if (_adInProgress)
+            {
+                _adsManager.adPlaybackInfo.isPlaying ? _adsManager.pause() :
+                    _adsManager.resume()
+            }
+	    break
         default:
             break
         }

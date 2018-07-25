@@ -20,7 +20,7 @@ class SparkPlayerController: UIViewController {
         view = resourceBundle.loadNibNamed(UINibName, owner: self, options: nil)?.first as! SparkPlayerView
     }
 
-    var delegate: SparkPlayerDelegate!
+    var delegate: SparkPlayerInternalDelegate!
     var timeFormatter: DateComponentsFormatter!
     var timeFont: UIFont!
     var timeHeight: CGFloat!
@@ -266,7 +266,7 @@ class SparkPlayerController: UIViewController {
 // Handling Player events
 extension SparkPlayerController {
     func timeupdate() {
-        let isLive = delegate.isLive()
+        let isLive = delegate.isLiveStream()
         sparkView.setLive(isLive)
 
         let currentTime = delegate.currentTime()

@@ -21,7 +21,7 @@ struct VideoPage {
     var text: String
 }
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, SparkPlayerDelegate {
 
     // MARK: Properties
     @IBOutlet weak var generateNotificationButton: UIButton!
@@ -89,16 +89,17 @@ class ViewController: UIViewController {
         sparkPlayer = SparkPlayer(withConfig: [
             "googima": ["adTagUrl": AD_TAG]
         ])
+        sparkPlayer.delegate = self
+        sparkPlayer.player = AVPlayer(url: info.video.getUrl())
+        sparkPlayer.view.frame.origin = CGPoint.zero
+        sparkPlayer.view.frame.size = playerContainer.frame.size
+        
+        playerContainer.addSubview(sparkPlayer.view)
         self.addChildViewController(sparkPlayer)
 
         self.title = info.video.getTitle()
         self.descriptionLabel.text = info.text
-
         print("selected video url: \(info.video.getUrl())")
-        sparkPlayer.player = AVPlayer(url: info.video.getUrl())
-        playerContainer.addSubview(sparkPlayer.view)
-        sparkPlayer.view.frame.origin = CGPoint.zero
-        sparkPlayer.view.frame.size = playerContainer.frame.size
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -117,6 +118,18 @@ class ViewController: UIViewController {
             sparkPlayer.player?.replaceCurrentItem(with: nil)
             self.navigationController?.interactivePopGestureRecognizer?.isEnabled = true
         }
+    }
+    
+    // SparkPlayerDelegate
+    
+    func onReady(_ sparkPlayer: SparkPlayer) {
+        print("player is ready")
+    }
+    
+    func onFullscreenChange(_ sparkPlayer: SparkPlayer, state: Bool,
+        source: String)
+    {
+        print("fullscreen \(state ? "enabled" : "disabled") by \(source)");
     }
 
 }
