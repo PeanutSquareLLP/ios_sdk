@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name             = 'SparkPlayer'
-  s.version          = '1.0.1.spark.1.103.409'
+  s.version          = '1.0.2.spark.1.103.990'
   s.summary          = 'Spark video player'
 
   s.description      = <<-DESC
@@ -12,7 +12,7 @@ Spark video player.
   s.author           = 'holaspark.com'
   s.source           = {
     :git => 'https://github.com/spark-mv/ios_sdk.git',
-    :tag => 'v1.103.409'
+    :tag => 'v1.103.990'
   }
 
   s.ios.deployment_target = '9.0'

@@ -22,7 +22,7 @@ class SparkPlayerController: UIViewController {
 
     var delegate: SparkPlayerInternalDelegate!
     var timeFormatter: DateComponentsFormatter!
-    var timeFont: UIFont!
+    var timeFont: UIFont?
     var timeHeight: CGFloat!
     private var timer: Timer?
     private var pauseIcon: UIImage!
@@ -266,6 +266,7 @@ class SparkPlayerController: UIViewController {
 // Handling Player events
 extension SparkPlayerController {
     func timeupdate() {
+        guard let font = timeFont else { return }
         let isLive = delegate.isLiveStream()
         sparkView.setLive(isLive)
 
@@ -274,7 +275,8 @@ extension SparkPlayerController {
 
         let currentTimeString = formatTime(currentTime, forDuration: duration)
         sparkView.currentTimeLabel.text = currentTimeString
-        sparkView.currentTimeWidth.constant = currentTimeString.width(withFont: timeFont)
+        sparkView.currentTimeWidth.constant =
+            currentTimeString.width(withFont: font)
 
         if (!isLive) {
             if (!seeking && !delegate.isSeeking()) {
@@ -285,7 +287,8 @@ extension SparkPlayerController {
 
             let durationString = formatTime(duration, forDuration: duration)
             sparkView.durationLabel.text = durationString
-            sparkView.durationWidth.constant = durationString.width(withFont: timeFont)
+            sparkView.durationWidth.constant =
+                durationString.width(withFont: font)
         }
     }
 
