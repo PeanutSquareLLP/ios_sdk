@@ -278,7 +278,7 @@ extension SparkPlayerController {
         sparkView.currentTimeWidth.constant =
             currentTimeString.width(withFont: font)
 
-        if (!isLive) {
+        if (!isLive && duration.seconds>0) {
             if (!seeking && !delegate.isSeeking()) {
                 sparkView.positionSlider.maximumValue = Float(duration.seconds)
                 sparkView.positionSlider.value = Float(currentTime.seconds)

@@ -87,10 +87,6 @@ class SparkPlayerScrubber: UISlider {
         let bar = self.subviews[0]
         let top = bar.frame.origin.y
         
-        if (width.isNaN || height.isNaN || duration.isNaN) {
-            return
-        }
-
         segments.forEach { (segment) in
             segment.removeFromSuperview()
         }
