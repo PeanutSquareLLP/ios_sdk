@@ -10,6 +10,7 @@ import UIKit
 class MenuItem {
     var iconName: String?
     var text: String
+    var disabled: (() -> Bool)?
     var action: (() -> Void)?
 
     weak var menu: SparkPlayerMenuViewController?
@@ -22,11 +23,18 @@ class MenuItem {
         return nil
     }
 
-    init(_ menu: SparkPlayerMenuViewController?, iconName: String?, text: String, action: (() -> Void)?) {
+    convenience init(_ menu: SparkPlayerMenuViewController?, iconName: String?, text: String, action: (() -> Void)?) {
+        self.init(menu, iconName: iconName, text: text, disabled: nil, action: action)
+    }
+    init(_ menu: SparkPlayerMenuViewController?, iconName: String?, text: String, disabled: (() -> Bool)?, action: (() -> Void)?) {
         self.menu = menu
         self.iconName = iconName
         self.text = text
+        self.disabled = disabled
         self.action = action
+    }
+    func isDisabled() -> Bool {
+        return self.disabled?() ?? false
     }
 }
 
@@ -68,7 +76,8 @@ class QualityMenuItem: SelectableMenuItem {
             text = "\(bitrate)ps"
         }
 
-        super.init(menu, iconName: "MenuCheck", text: text, action: nil)
+        super.init(menu, iconName: "MenuCheck", text: text,
+            disabled: nil, action: nil)
 
         unowned let weakSelf = self
         self.action = {
@@ -104,7 +113,8 @@ class RateMenuItem: SelectableMenuItem {
         self.delegate = delegate
         self.rate = rate
 
-        super.init(menu, iconName: "MenuCheck", text: text ?? "\(rate)", action: nil)
+        super.init(menu, iconName: "MenuCheck", text: text ?? "\(rate)",
+            disabled: nil, action: nil)
 
         unowned let weakSelf = self
         self.action = {

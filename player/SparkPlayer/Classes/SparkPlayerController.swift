@@ -57,8 +57,12 @@ class SparkPlayerController: UIViewController {
         menu.closeItem = closeMenuItem
 
         menu.items = [
-            MenuItem(menu, iconName: "MenuQuality", text: "Quality") { self.openMenu(menu: self.qualityMenu) },
-            MenuItem(menu, iconName: "MenuSpeed", text: "Playback speed") { self.openMenu(menu: self.speedMenu) },
+            MenuItem(menu, iconName: "MenuQuality", text: "Quality",
+                action: { self.openMenu(menu: self.qualityMenu) }),
+            MenuItem(menu, iconName: "MenuSpeed", text: "Playback speed",
+                disabled: { return self.delegate?.isLiveStream() ?? false },
+                action: { self.openMenu(menu: self.speedMenu) }
+            ),
         ]
 
         _mainMenu = menu
@@ -104,18 +108,22 @@ class SparkPlayerController: UIViewController {
         autoInfo.bitrate = 0
         autoInfo.url = nil
         autoInfo.resolution = "Auto"
-        var items: [MenuItem] = [
-            QualityMenuItem(menu, delegate: delegate, levelInfo: autoInfo)
-        ]
+        let autoItem = QualityMenuItem(menu, delegate: delegate,
+            levelInfo: autoInfo)
 
-        let qualityList = delegate.getQualityList()
-        qualityList.forEach { (level) in
-            let item = QualityMenuItem(menu, delegate: delegate, levelInfo: level)
-            items.append(item)
+        var qualityItems: [MenuItem] = []
+        delegate.getQualityList().forEach { (level) in
+            // XXX volodymyr: HLSParser will return bitrate=1 for single-level
+            // manifest without stream info, we force 'Auto' label in this case
+            guard level.resolution != nil || level.bitrate.doubleValue>1 else {
+                return
+            }
+            qualityItems.append(QualityMenuItem(menu, delegate: delegate,
+                levelInfo: level))
         }
 
-        menu.items = items
-
+        menu.items = qualityItems.count==1 ? qualityItems :
+            [autoItem]+qualityItems
         _qualityMenu = menu
         return menu
     }

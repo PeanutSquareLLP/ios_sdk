@@ -44,16 +44,7 @@ class SparkPlayerMenuViewController: UIViewController {
             reloadMenu()
         }
     }
-
-    func getMenuItem(_ indexPath: IndexPath) -> MenuItem? {
-        let row = indexPath.row
-
-        guard row < items.count else {
-            return nil
-        }
-
-        return items[row]
-    }
+    var activeItems: [MenuItem] = []
 
     public override func loadView() {
         guard let resourceBundle = SparkPlayer.getResourceBundle() else {
@@ -81,7 +72,6 @@ class SparkPlayerMenuViewController: UIViewController {
             collectionView.addGestureRecognizer(tap)
         }
 
-        reloadMenu()
     }
 
     override var shouldAutorotate: Bool {
@@ -91,6 +81,7 @@ class SparkPlayerMenuViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         menuFooterHeight = self.view.frame.height
+        reloadMenu()
     }
 
     override func viewDidLayoutSubviews() {
@@ -137,14 +128,27 @@ extension SparkPlayerMenuViewController: UIGestureRecognizerDelegate {
 }
 
 extension SparkPlayerMenuViewController: UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
-    func menuHeight() -> CGFloat {
-        return collectionContentHeight() + menuView.cancelButton.frame.height
-    }
-
+    
     func reloadMenu() {
+        activeItems = items.filter( { (item: MenuItem) -> Bool in
+            return !item.isDisabled()
+        })
         if let collection = self.collectionView {
             collection.reloadData()
         }
+    }
+
+    func getMenuItem(_ indexPath: IndexPath) -> MenuItem? {
+        let row = indexPath.row
+
+        guard row < activeItems.count else {
+            return nil
+        }
+
+        return activeItems[row]
+    }
+    func menuHeight() -> CGFloat {
+        return collectionContentHeight() + menuView.cancelButton.frame.height
     }
 
     func updateMenuContentInset() {
@@ -171,7 +175,7 @@ extension SparkPlayerMenuViewController: UICollectionViewDelegate, UICollectionV
     }
 
     public func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return items.count
+        return activeItems.count
     }
 
     public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
