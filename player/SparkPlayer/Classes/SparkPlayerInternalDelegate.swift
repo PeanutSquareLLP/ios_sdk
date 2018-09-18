@@ -14,6 +14,7 @@ protocol SparkPlayerInternalDelegate {
 
     // Internal interface for AVPlayer data
     func isLiveStream() -> Bool
+    func isDvrEnabled() -> Bool
     func currentTime() -> CMTime
     func seekStart(_ value: CMTime)
     func seekTo(_ value: CMTime)
@@ -24,6 +25,7 @@ protocol SparkPlayerInternalDelegate {
     func setRate(_ rate: Float)
     func duration() -> CMTime
     func loadedTimeRanges() -> [CMTimeRange]
+    func seekableTimeRanges() -> [CMTimeRange]
     func isPaused() -> Bool
     func isEnded() -> Bool
     func isSeeking() -> Bool
@@ -61,6 +63,12 @@ extension SparkPlayer: SparkPlayerInternalDelegate {
 
     func isLiveStream() -> Bool {
         return player?.currentItem?.status == .readyToPlay && player?.currentItem?.duration.isIndefinite == true
+    }
+    
+    func isDvrEnabled() -> Bool {
+        let ranges = seekableTimeRanges()
+        guard minDvrLength>0 && ranges.count>0 else { return false }
+        return ranges[0].duration.seconds>Double(minDvrLength)
     }
 
     func currentTime() -> CMTime {
@@ -150,6 +158,14 @@ extension SparkPlayer: SparkPlayerInternalDelegate {
         }
 
         return item.loadedTimeRanges.asTimeRanges
+    }
+    
+    func seekableTimeRanges() -> [CMTimeRange] {
+        guard let item = self.player?.currentItem else {
+            return []
+        }
+        
+        return item.seekableTimeRanges.asTimeRanges
     }
 
     func isPaused() -> Bool {

@@ -73,6 +73,7 @@ public class SparkPlayer: UIViewController {
     }
 
     public var allowAutoFullscreen = true
+    public var minDvrLength = 10*60
     public var limitControlsWidth = false
     public var delegate: SparkPlayerDelegate?
     
@@ -122,6 +123,9 @@ public class SparkPlayer: UIViewController {
         self.config = config ?? Dictionary<String, Any>()
         if let allowAutoFullscreen = self.config["allowAutoFullscreen"] as? Bool {
             self.allowAutoFullscreen = allowAutoFullscreen
+        }
+        if let minDvrLength = self.config["minDvrLength"] as? Int {
+            self.minDvrLength = minDvrLength
         }
         self.plugins = Dictionary<String, PluginInterface>()
         if let cfg = self.config[GoogimaPlugin.name] as? Dictionary<String, Any> {
@@ -292,7 +296,9 @@ public class SparkPlayer: UIViewController {
             return
         }
 
-        let sparkAsset = SparkPlayerHLSAsset(url: asset.url)
+        let sparkAsset = SparkPlayerHLSAsset(url: asset.url, options:[
+            AVURLAssetPreferPreciseDurationAndTimingKey: true,
+        ])
         let sparkItem = AVPlayerItem(asset: sparkAsset)
 
         currentItem = sparkItem

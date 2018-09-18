@@ -12,6 +12,12 @@ enum FadeDirection {
     case In
     case Out
 }
+enum VideoMode {
+    case VOD
+    case LIVE
+    case DVR
+    case DVR_LIVE
+}
 
 class SparkPlayerView: UIView {
     @IBOutlet weak var fullscreenButton: UIButton!
@@ -56,7 +62,7 @@ class SparkPlayerView: UIView {
     }
 
     private var isFullscreen: Bool = false
-    private var isLive: Bool = false
+    private var videoMode: VideoMode = .VOD
     var controlsBackground: CAGradientLayer!
 
     func setup() {
@@ -109,24 +115,28 @@ class SparkPlayerView: UIView {
         }, completion: nil)
     }
 
-    func setLive(_ live: Bool) {
-        guard self.isLive != live else {
-            return
-        }
-
-        self.isLive = live
-
-        if (live && liveDot.image == nil) {
+    func getVideoMode() -> VideoMode {
+        return self.videoMode
+    }
+    func setVideoMode(_ mode: VideoMode) {
+        guard videoMode != mode else { return }
+        videoMode = mode
+        updateControls()
+    }
+    
+    func updateControls() {
+        if (videoMode != .VOD) {
             let height = liveDot.frame.height
-            liveDot.image = UIImage.circle(diameter: height, color: UIColor.SparkPlayer.thumb)
+            let color = videoMode == .LIVE || videoMode == .DVR_LIVE ?
+                UIColor.SparkPlayer.thumb : UIColor.SparkPlayer.loaded
+            liveDot.image = UIImage.circle(diameter: height, color: color)
         }
-
-        currentTimeLabel.isHidden = live
-        liveDot.isHidden = !live
-        liveLabel.isHidden = !live
-        durationLabel.isHidden = live
-        positionSlider.isHidden = live
-        positionSlider.isEnabled = !live
+        currentTimeLabel.isHidden = videoMode != .VOD
+        liveDot.isHidden = videoMode == .VOD
+        liveLabel.isHidden = videoMode == .VOD
+        durationLabel.isHidden = videoMode == .LIVE || videoMode == .DVR_LIVE
+        positionSlider.isHidden = videoMode == .LIVE
+        positionSlider.isEnabled = videoMode != .LIVE
     }
 }
 

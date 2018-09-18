@@ -78,7 +78,7 @@ class SparkPlayerScrubber: UISlider {
             return
         }
 
-        let duration = CGFloat(self.maximumValue)
+        let duration = CGFloat(self.maximumValue-self.minimumValue)
         let width = self.frame.width
         let widthPerSecond = width / duration
         // XXX alexeym TODO: add options for sizes to avoid hadrcoded values
@@ -92,8 +92,10 @@ class SparkPlayerScrubber: UISlider {
         }
         segments.removeAll()
         ranges.forEach{(range) in
-            let from = max(height, widthPerSecond * CGFloat(range.start.seconds))
-            let segmentWidth = widthPerSecond * CGFloat(range.duration.seconds)
+            let from = max(height, widthPerSecond *
+                (CGFloat(range.start.seconds) - CGFloat(self.minimumValue)))
+            let segmentWidth = widthPerSecond *
+                min(CGFloat(range.duration.seconds), duration)
             let segmentWidthToUse: CGFloat
             if (from+segmentWidth > width-height) {
                 segmentWidthToUse = width-from-height

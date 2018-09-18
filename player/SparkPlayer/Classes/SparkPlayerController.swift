@@ -145,9 +145,18 @@ class SparkPlayerController: UIViewController {
         timeFormatter.zeroFormattingBehavior = .pad
         timeFormatter.allowedUnits = [.minute, .second]
 
-        let tap = UITapGestureRecognizer(target: self, action: #selector(SparkPlayerController.onPlayerTap(_:)))
+        var tap = UITapGestureRecognizer(target: self,
+	    action: #selector(SparkPlayerController.onPlayerTap(_:)))
         view.isUserInteractionEnabled = true
         view.addGestureRecognizer(tap)
+        tap = UITapGestureRecognizer(target: self,
+            action:#selector(SparkPlayerController.onLiveTap(_:)))
+        sparkView.liveLabel.isUserInteractionEnabled = true
+        sparkView.liveLabel.addGestureRecognizer(tap)
+        tap = UITapGestureRecognizer(target: self,
+            action:#selector(SparkPlayerController.onLiveTap(_:)))
+        sparkView.liveDot.isUserInteractionEnabled = true
+        sparkView.liveDot.addGestureRecognizer(tap)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -204,31 +213,127 @@ class SparkPlayerController: UIViewController {
         }
     }
 
+    func sec2time(_ value: Float) -> CMTime {
+        return CMTimeMakeWithSeconds(Float64(value), Int32(NSEC_PER_SEC))
+    }
+    
+    func sec2end() -> Float {
+        guard !seeking else {
+            return sparkView.positionSlider.maximumValue -
+                sparkView.positionSlider.value
+        }
+        guard let range = getSeekableRange() else { return 0 }
+        let end = range.end.seconds
+        let pos = delegate.currentTime().seconds
+        return Float(max(end-pos, 0))
+    }
+    
+    func getSeekableRange() -> CMTimeRange? {
+        let ranges = delegate.seekableTimeRanges()
+        guard ranges.count>0 else { return nil }
+        return ranges[0]
+    }
+    
     func setSliderState(_ state: ThumbStates) {
         sparkView.positionSlider.setThumbState(state)
+    }
+    
+    func returnToLive() {
+        guard sparkView.getVideoMode() == .DVR else { return }
+        sparkView.positionSlider.value = sparkView.positionSlider.maximumValue
+        sparkView.setVideoMode(.DVR_LIVE)
+        updateTimeLabels()
+        delegate.seekTo(sec2time(sparkView.positionSlider.value))
+    }
+    
+    func adjustPosition(){
+        updateVideoMode()
+        guard sparkView.getVideoMode() == .DVR else { return }
+        updatePositionSlider()
+        updateTimeLabels()
+        let min = sparkView.positionSlider.minimumValue
+        if (delegate.currentTime().seconds < Double(min)) {
+            delegate.seekTo(sec2time(min))
+        }
     }
 
     func onSeekStart() {
         seeking = true
         activateView(withSlider: .Highlighted)
-
-        let time = CMTimeMakeWithSeconds(Float64(sparkView.positionSlider.value), Int32(NSEC_PER_SEC))
-        delegate.seekStart(time);
+        delegate.seekStart(sec2time(sparkView.positionSlider.value));
     }
 
     func onSeekMove() {
-        let time = CMTimeMakeWithSeconds(Float64(sparkView.positionSlider.value), Int32(NSEC_PER_SEC))
-        delegate.seekMove(time);
+        updateVideoMode()
+        updateTimeLabels()
+        delegate.seekMove(sec2time(sparkView.positionSlider.value));
     }
 
     func onSeekEnd() {
+        updateVideoMode()
+        updateTimeLabels()
         seeking = false
         activateView(withSlider: .Focused)
-
-        let time = CMTimeMakeWithSeconds(Float64(sparkView.positionSlider.value), Int32(NSEC_PER_SEC))
-        delegate.seekTo(time)
+        if (sparkView.getVideoMode() == .DVR_LIVE) {
+            sparkView.positionSlider.value =
+                sparkView.positionSlider.maximumValue
+        }
+        delegate.seekTo(sec2time(sparkView.positionSlider.value))
     }
-
+    
+    func updateVideoMode() {
+        let mode: VideoMode = !delegate.isLiveStream() ? .VOD :
+            !delegate.isDvrEnabled() ? .LIVE : sec2end()<20 ? .DVR_LIVE :
+            sec2end()>40 ? .DVR : sparkView.getVideoMode()
+        sparkView.setVideoMode(mode)
+    }
+    
+    func updateTimeLabels() {
+        guard let font = timeFont else { return }
+        let pos = delegate.currentTime()
+        let dur = delegate.duration()
+        if (delegate.isLiveStream()) {
+            let timeBehind = sec2time(seeking ||
+                sparkView.getVideoMode() == .DVR ? -sec2end() : 0)
+            let timeBehindString = formatTime(timeBehind,
+                forDuration: timeBehind)
+            sparkView.durationLabel.text = timeBehindString
+            sparkView.durationWidth.constant =
+                timeBehindString.width(withFont: font)
+        }
+        else if (dur.seconds>0) {
+            let currentTimeString = formatTime(pos, forDuration: dur)
+            sparkView.currentTimeLabel.text = currentTimeString
+            sparkView.currentTimeWidth.constant =
+                currentTimeString.width(withFont: font)
+            let durationString = formatTime(dur, forDuration: dur)
+            sparkView.durationLabel.text = durationString
+            sparkView.durationWidth.constant =
+                durationString.width(withFont: font)
+        }
+    }
+    
+    func updatePositionSlider() {
+        let pos = delegate.currentTime()
+        let dur = delegate.duration()
+        let range = getSeekableRange()
+        if (delegate.isLiveStream() && range != nil) {
+            sparkView.positionSlider.minimumValue =
+                Float(range!.start.seconds)
+            sparkView.positionSlider.maximumValue =
+                Float(range!.end.seconds)
+            sparkView.positionSlider.value = sparkView.getVideoMode() == .DVR ?
+                max(sparkView.positionSlider.minimumValue, Float(pos.seconds)) :
+                min(sparkView.positionSlider.maximumValue, Float(pos.seconds))
+        }
+        else if (dur.seconds>0) {
+            sparkView.positionSlider.minimumValue = 0
+            sparkView.positionSlider.maximumValue = Float(dur.seconds)
+            sparkView.positionSlider.value = Float(pos.seconds)
+        }
+        sparkView.positionSlider.loaded = delegate.loadedTimeRanges()
+    }
+    
     func formatTime(_ time: CMTime, forDuration duration: CMTime) -> String {
         let seconds = time.seconds
         if (!time.isValid || time.isIndefinite || seconds == 0) {
@@ -266,44 +371,27 @@ class SparkPlayerController: UIViewController {
     }
 
     func setRate(_ rate: Float) {
-         self.delegate.setRate(rate)
-         self.closeMenu()
+        self.delegate.setRate(rate)
+        self.closeMenu()
     }
 }
 
 // Handling Player events
 extension SparkPlayerController {
     func timeupdate() {
-        guard let font = timeFont else { return }
-        let isLive = delegate.isLiveStream()
-        sparkView.setLive(isLive)
-
-        let currentTime = delegate.currentTime()
-        let duration = isLive ? currentTime : delegate.duration()
-
-        let currentTimeString = formatTime(currentTime, forDuration: duration)
-        sparkView.currentTimeLabel.text = currentTimeString
-        sparkView.currentTimeWidth.constant =
-            currentTimeString.width(withFont: font)
-
-        if (!isLive && duration.seconds>0) {
-            if (!seeking && !delegate.isSeeking()) {
-                sparkView.positionSlider.maximumValue = Float(duration.seconds)
-                sparkView.positionSlider.value = Float(currentTime.seconds)
-            }
-            sparkView.positionSlider.loaded = delegate.loadedTimeRanges()
-
-            let durationString = formatTime(duration, forDuration: duration)
-            sparkView.durationLabel.text = durationString
-            sparkView.durationWidth.constant =
-                durationString.width(withFont: font)
-        }
+        guard !seeking && !delegate.isSeeking() else { return }
+        updateVideoMode()
+        updatePositionSlider()
+        updateTimeLabels()
     }
 
     func onPlayPause() {
         let isPaused = delegate.isPaused()
         let isReplay = delegate.isEnded()
         sparkView.playButton.setImage(isReplay ? replayIcon : isPaused ? playIcon : pauseIcon, for: .normal)
+        if (!isPaused) {
+            adjustPosition()
+        }
     }
 }
 
@@ -311,6 +399,11 @@ extension SparkPlayerController {
 extension SparkPlayerController {
     @objc func onPlayerTap(_ gestureRecognizer: UITapGestureRecognizer) {
         activateView()
+    }
+    
+    @objc func onLiveTap(_ gestureRecognizer: UITapGestureRecognizer) {
+        activateView()
+        returnToLive()
     }
 
     @IBAction func onPlayButton(sender: UIButton!) {
